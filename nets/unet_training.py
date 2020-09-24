@@ -40,6 +40,9 @@ def rand(a=0, b=1):
     return np.random.rand()*(b-a) + a
 
 def letterbox_image(image, label , size):
+    image = image.convert("RGB")
+    label = Image.fromarray(np.array(label))
+
     '''resize image with unchanged aspect ratio using padding'''
     iw, ih = image.size
     w, h = size
@@ -66,6 +69,8 @@ class Generator(object):
         self.num_classes = num_classes
 
     def get_random_data(self, image, label, input_shape, jitter=.3, hue=.1, sat=1.5, val=1.5):
+        image = image.convert("RGB")
+        label = Image.fromarray(np.array(label))
 
         h, w = input_shape
         # resize image
