@@ -35,14 +35,14 @@ VOC拓展数据集的百度网盘如下：
 ### 预测步骤
 #### 1、使用预训练权重
 ##### a、VOC预训练权重
-a、下载完库后解压，如果想要利用voc训练好的权重进行预测，在百度网盘或者release下载unet_voc.h5，放入model_data，运行即可预测。  
+1)、下载完库后解压，如果想要利用voc训练好的权重进行预测，在百度网盘或者release下载unet_voc.h5，放入model_data，运行即可预测。  
 ```python
 img/street.jpg
 ```
 可完成预测。    
-b、利用video.py可进行摄像头检测。    
+2)、利用video.py可进行摄像头检测。    
 ##### b、医药预训练权重
-a、下载完库后解压，如果想要利用医药数据集训练好的权重进行预测，在百度网盘或者release下载unet_medical.h5，放入model_data，修改unet.py中的model_path和num_classes；
+1)、下载完库后解压，如果想要利用医药数据集训练好的权重进行预测，在百度网盘或者release下载unet_medical.h5，放入model_data，修改unet.py中的model_path和num_classes；
 ```python
 _defaults = {
     "model_path"        : 'model_data/unet_medical.h5',
@@ -57,7 +57,7 @@ _defaults = {
 img/cell.jpg
 ```
 可完成预测。    
-b、利用video.py可进行摄像头检测。    
+2)、利用video.py可进行摄像头检测。    
 #### 2、使用自己训练的权重
 a、按照训练步骤训练。    
 b、在unet.py文件里面，在如下部分修改model_path、backbone和num_classes使其对应训练好的文件；**model_path对应logs文件夹下面的权值文件**。    
@@ -78,21 +78,21 @@ d、利用video.py可进行摄像头检测。
 
 ### 训练步骤
 #### 1、训练voc数据集
-1、将我提供的voc数据集放入VOCdevkit中（无需运行voc2unet.py）。  
-2、在train.py中设置对应参数，默认参数已经对应voc数据集所需要的参数了，所以只要修改backbone和model_path即可。  
-3、运行train.py进行训练。  
+a、将我提供的voc数据集放入VOCdevkit中（无需运行voc2unet.py）。  
+b、在train.py中设置对应参数，默认参数已经对应voc数据集所需要的参数了，所以只要修改backbone和model_path即可。  
+c、运行train.py进行训练。  
 
 #### 2、训练自己的数据集
-1、本文使用VOC格式进行训练。  
-2、训练前将标签文件放在VOCdevkit文件夹下的VOC2007文件夹下的SegmentationClass中。    
-3、训练前将图片文件放在VOCdevkit文件夹下的VOC2007文件夹下的JPEGImages中。    
-4、在训练前利用voc2unet.py文件生成对应的txt。
-5、注意修改train.py的num_classes为分类个数+1。  
-6、运行train.py即可开始训练。  
+a、本文使用VOC格式进行训练。  
+b、训练前将标签文件放在VOCdevkit文件夹下的VOC2007文件夹下的SegmentationClass中。    
+c、训练前将图片文件放在VOCdevkit文件夹下的VOC2007文件夹下的JPEGImages中。    
+d、在训练前利用voc2unet.py文件生成对应的txt。
+e、注意修改train.py的num_classes为分类个数+1。  
+f、运行train.py即可开始训练。  
 
 #### 3、训练医药数据集
-1、下载VGG的预训练权重到model_data下面。
-2、按照默认参数运行train_medical.py即可开始训练。
+a、下载VGG的预训练权重到model_data下面。
+b、按照默认参数运行train_medical.py即可开始训练。
 
 ### miou计算
 参考miou计算视频和博客。  
