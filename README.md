@@ -54,10 +54,9 @@ _defaults = {
 ```
 运行即可预测。  
 ```python
-img/cell.jpg
+img/cell.png
 ```
-可完成预测。    
-2)、利用video.py可进行摄像头检测。    
+可完成预测。      
 #### 2、使用自己训练的权重
 a、按照训练步骤训练。    
 b、在unet.py文件里面，在如下部分修改model_path、backbone和num_classes使其对应训练好的文件；**model_path对应logs文件夹下面的权值文件**。    
