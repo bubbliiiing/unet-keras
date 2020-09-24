@@ -32,7 +32,7 @@ if __name__ == "__main__":
     model = Unet(inputs_size,num_classes)
     # model.summary()
 
-    model_path = "./model_data/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5"
+    model_path = "./model_data/unet_voc.h5"
     model.load_weights(model_path, by_name=True, skip_mismatch=True)
 
     # 打开数据集的txt
@@ -62,7 +62,7 @@ if __name__ == "__main__":
         lr = 1e-4
         Init_Epoch = 0
         Freeze_Epoch = 50
-        Batch_size = 4
+        Batch_size = 2
         # 交叉熵
         model.compile(loss = dice_loss_with_CE() if dice_loss else CE(),
                 optimizer = Adam(lr=lr),
