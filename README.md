@@ -90,7 +90,7 @@ e、注意修改train.py的num_classes为分类个数+1。
 f、运行train.py即可开始训练。  
 
 #### 3、训练医药数据集
-a、下载VGG的预训练权重到model_data下面。
+a、下载VGG的预训练权重到model_data下面。  
 b、按照默认参数运行train_medical.py即可开始训练。
 
 ### miou计算
