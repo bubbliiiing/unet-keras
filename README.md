@@ -22,9 +22,9 @@ tensorflow-gpu==1.13.1
 keras==2.1.5   
 
 ## 注意事项
-unet_voc.h5是基于VOC拓展数据集训练的。
-unet_medical.h5是使用示例的细胞分割数据集训练的。
-在使用时需要注意区分。
+unet_voc.h5是基于VOC拓展数据集训练的。  
+unet_medical.h5是使用示例的细胞分割数据集训练的。  
+在使用时需要注意区分。  
 
 ## 文件下载
 训练所需的unet_voc.h5和unet_medical.h5可在百度网盘中下载。    
