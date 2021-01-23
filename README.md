@@ -1,7 +1,7 @@
 ## Unet：U-Net: Convolutional Networks for Biomedical Image Segmentation目标检测模型在Keras当中的实现
 ---
 
-### 目录
+## 目录
 1. [性能情况 Performance](#性能情况)
 2. [所需环境 Environment](#所需环境)
 3. [注意事项 Attention](#注意事项)
@@ -11,38 +11,37 @@
 7. [miou计算 miou](#miou计算)
 8. [参考资料 Reference](#Reference)
 
-### 性能情况
+## 性能情况
 **unet并不适合VOC此类数据集，其更适合特征少，需要浅层特征的医药数据集之类的。**
 | 训练数据集 | 权值文件名称 | 测试数据集 | 输入图片大小 | mIOU | 
 | :-----: | :-----: | :------: | :------: | :------: | 
 | VOC12+SBD | [unet_voc.h5](https://github.com/bubbliiiing/unet-keras/releases/download/v1.0/unet_voc.h5) | VOC-Val12 | 512x512| 55.74 | 
 
-### 所需环境
+## 所需环境
 tensorflow-gpu==1.13.1    
 keras==2.1.5   
 
-### 注意事项
+## 注意事项
 unet_voc.h5是基于VOC拓展数据集训练的。
 unet_medical.h5是使用示例的细胞分割数据集训练的。
 在使用时需要注意区分。
 
-### 文件下载
+## 文件下载
 训练所需的unet_voc.h5和unet_medical.h5可在百度网盘中下载。    
 链接: https://pan.baidu.com/s/1NIA3pOWYjseFI7Ofv6QoCg 提取码: f38i     
 VOC拓展数据集的百度网盘如下：  
 链接: https://pan.baidu.com/s/1BrR7AUM1XJvPWjKMIy2uEw 提取码: vszf    
 
-### 预测步骤
-#### 1、使用预训练权重
-##### a、VOC预训练权重
-1)、下载完库后解压，如果想要利用voc训练好的权重进行预测，在百度网盘或者release下载unet_voc.h5，放入model_data，运行即可预测。  
+## 预测步骤
+### 一、使用预训练权重
+#### a、VOC预训练权重
+1. 下载完库后解压，如果想要利用voc训练好的权重进行预测，在百度网盘或者release下载unet_voc.h5，放入model_data，运行即可预测。  
 ```python
 img/street.jpg
-```
-可完成预测。    
-2)、利用video.py可进行摄像头检测。    
-##### b、医药预训练权重
-1)、下载完库后解压，如果想要利用医药数据集训练好的权重进行预测，在百度网盘或者release下载unet_medical.h5，放入model_data，修改unet.py中的model_path和num_classes；
+```    
+2. 利用video.py可进行摄像头检测。    
+#### b、医药预训练权重
+1. 下载完库后解压，如果想要利用医药数据集训练好的权重进行预测，在百度网盘或者release下载unet_medical.h5，放入model_data，修改unet.py中的model_path和num_classes；
 ```python
 _defaults = {
     "model_path"        : 'model_data/unet_medical.h5',
@@ -56,10 +55,9 @@ _defaults = {
 ```python
 img/cell.png
 ```
-可完成预测。      
-#### 2、使用自己训练的权重
-a、按照训练步骤训练。    
-b、在unet.py文件里面，在如下部分修改model_path、backbone和num_classes使其对应训练好的文件；**model_path对应logs文件夹下面的权值文件**。    
+### 二、使用自己训练的权重
+1. 按照训练步骤训练。    
+2. 在unet.py文件里面，在如下部分修改model_path、backbone和num_classes使其对应训练好的文件；**model_path对应logs文件夹下面的权值文件**。    
 ```python
 _defaults = {
     "model_path"        : 'model_data/unet_voc.h5',
@@ -68,34 +66,33 @@ _defaults = {
     "blend"             : True,
 }
 ```
-c、运行predict.py，输入    
+3. 运行predict.py，输入    
 ```python
 img/street.jpg
-```
-可完成预测。    
-d、利用video.py可进行摄像头检测。    
+```   
+4. 利用video.py可进行摄像头检测。    
 
-### 训练步骤
-#### 1、训练voc数据集
-a、将我提供的voc数据集放入VOCdevkit中（无需运行voc2unet.py）。  
-b、在train.py中设置对应参数，默认参数已经对应voc数据集所需要的参数了，所以只要修改backbone和model_path即可。  
-c、运行train.py进行训练。  
+## 训练步骤
+### a、训练voc数据集
+1. 将我提供的voc数据集放入VOCdevkit中（无需运行voc2unet.py）。  
+2. 在train.py中设置对应参数，默认参数已经对应voc数据集所需要的参数了，所以只要修改backbone和model_path即可。  
+3. 运行train.py进行训练。  
 
-#### 2、训练自己的数据集
-a、本文使用VOC格式进行训练。  
-b、训练前将标签文件放在VOCdevkit文件夹下的VOC2007文件夹下的SegmentationClass中。    
-c、训练前将图片文件放在VOCdevkit文件夹下的VOC2007文件夹下的JPEGImages中。    
-d、在训练前利用voc2unet.py文件生成对应的txt。
-e、注意修改train.py的num_classes为分类个数+1。  
-f、运行train.py即可开始训练。  
+### b、训练自己的数据集
+1. 本文使用VOC格式进行训练。  
+2. 训练前将标签文件放在VOCdevkit文件夹下的VOC2007文件夹下的SegmentationClass中。    
+3. 训练前将图片文件放在VOCdevkit文件夹下的VOC2007文件夹下的JPEGImages中。    
+4. 在训练前利用voc2unet.py文件生成对应的txt。
+5. 注意修改train.py的num_classes为分类个数+1。  
+6. 运行train.py即可开始训练。  
 
-#### 3、训练医药数据集
-a、下载VGG的预训练权重到model_data下面。  
-b、按照默认参数运行train_medical.py即可开始训练。
+#### c、训练医药数据集
+1. 下载VGG的预训练权重到model_data下面。  
+2. 按照默认参数运行train_medical.py即可开始训练。
 
-### miou计算
+## miou计算
 参考miou计算视频和博客。  
 
-### Reference
+## Reference
 https://github.com/ggyyzm/pytorch_segmentation  
 https://github.com/bonlime/keras-deeplab-v3-plus
