@@ -1,10 +1,13 @@
-from keras import backend
 import tensorflow as tf
+from keras import backend
+
+
 def Iou_score(smooth = 1e-5, threhold = 0.5):
     def _Iou_score(y_true, y_pred):
         # score calculation
         y_pred = backend.greater(y_pred, threhold)
         y_pred = backend.cast(y_pred, backend.floatx())
+        
         intersection = backend.sum(y_true[...,:-1] * y_pred, axis=[0,1,2])
         union = backend.sum(y_true[...,:-1] + y_pred, axis=[0,1,2]) - intersection
 

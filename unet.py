@@ -1,15 +1,28 @@
-from nets.unet import Unet as unet
-from PIL import Image
-import numpy as np
 import colorsys
 import copy
 import os
 
+import numpy as np
+from PIL import Image
+
+from nets.unet import Unet as unet
+
+
+#--------------------------------------------#
+#   使用自己训练好的模型预测需要修改2个参数
+#   model_path和num_classes都需要修改！
+#   如果出现shape不匹配
+#   一定要注意训练时的model_path和num_classes数的修改
+#--------------------------------------------#
 class Unet(object):
     _defaults = {
         "model_path"        : 'model_data/unet_voc.h5',
         "model_image_size"  : (512, 512, 3),
         "num_classes"       : 21,
+        #--------------------------------#
+        #   blend参数用于控制是否
+        #   让识别结果和原图混合
+        #--------------------------------#
         "blend"             : True,
     }
 
@@ -21,9 +34,12 @@ class Unet(object):
         self.generate()
 
     #---------------------------------------------------#
-    #   获得所有的分类
+    #   载入模型
     #---------------------------------------------------#
     def generate(self):
+        #-------------------------------#
+        #   载入模型与权值
+        #-------------------------------#
         self.model = unet(self.model_image_size, self.num_classes)
 
         self.model.load_weights(self.model_path)
@@ -62,27 +78,49 @@ class Unet(object):
     #   检测图片
     #---------------------------------------------------#
     def detect_image(self, image):
+        #---------------------------------------------------#
+        #   对输入图像进行一个备份，后面用于绘图
+        #---------------------------------------------------#
         old_img = copy.deepcopy(image)
         orininal_h = np.array(image).shape[0]
         orininal_w = np.array(image).shape[1]
 
+        #---------------------------------------------------#
+        #   进行不失真的resize，添加灰条，进行图像归一化
+        #---------------------------------------------------#
         img, nw, nh = self.letterbox_image(image,(self.model_image_size[1],self.model_image_size[0]))
-        img = [np.array(img)/255]
-        img = np.asarray(img)
+        img = np.asarray([np.array(img)/255])
         
+        #---------------------------------------------------#
+        #   图片传入网络进行预测
+        #---------------------------------------------------#
         pr = self.model.predict(img)[0]
+        #---------------------------------------------------#
+        #   取出每一个像素点的种类
+        #---------------------------------------------------#
         pr = pr.argmax(axis=-1).reshape([self.model_image_size[0],self.model_image_size[1]])
+        #--------------------------------------#
+        #   将灰条部分截取掉
+        #--------------------------------------#
         pr = pr[int((self.model_image_size[0]-nh)//2):int((self.model_image_size[0]-nh)//2+nh), int((self.model_image_size[1]-nw)//2):int((self.model_image_size[1]-nw)//2+nw)]
 
+        #------------------------------------------------#
+        #   创建一副新图，并根据每个像素点的种类赋予颜色
+        #------------------------------------------------#
         seg_img = np.zeros((np.shape(pr)[0],np.shape(pr)[1],3))
-
         for c in range(self.num_classes):
             seg_img[:,:,0] += ((pr[:,: ] == c )*( self.colors[c][0] )).astype('uint8')
             seg_img[:,:,1] += ((pr[:,: ] == c )*( self.colors[c][1] )).astype('uint8')
             seg_img[:,:,2] += ((pr[:,: ] == c )*( self.colors[c][2] )).astype('uint8')
 
-        image = Image.fromarray(np.uint8(seg_img)).resize((orininal_w,orininal_h))
+        #------------------------------------------------#
+        #   将新图片转换成Image的形式
+        #------------------------------------------------#
+        image = Image.fromarray(np.uint8(seg_img)).resize((orininal_w,orininal_h), Image.NEAREST)
 
+        #------------------------------------------------#
+        #   将新图片和原图片混合
+        #------------------------------------------------#
         if self.blend:
             image = Image.blend(old_img,image,0.7)
 

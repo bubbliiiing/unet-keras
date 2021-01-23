@@ -1,12 +1,14 @@
-import keras
-import tensorflow as tf
-import numpy as np
-from PIL import Image
 from random import shuffle
+
+import cv2
+import keras
+import numpy as np
+import tensorflow as tf
 from keras import backend as K
-from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
+from matplotlib.colors import hsv_to_rgb, rgb_to_hsv
+from PIL import Image
 from utils.metrics import f_score
-import cv2         
+
 
 def dice_loss_with_CE(beta=1, smooth = 1e-5):
     def _dice_loss_with_CE(y_true, y_pred):
@@ -40,7 +42,6 @@ def rand(a=0, b=1):
     return np.random.rand()*(b-a) + a
 
 def letterbox_image(image, label , size):
-    image = image.convert("RGB")
     label = Image.fromarray(np.array(label))
 
     '''resize image with unchanged aspect ratio using padding'''
@@ -69,7 +70,6 @@ class Generator(object):
         self.num_classes = num_classes
 
     def get_random_data(self, image, label, input_shape, jitter=.3, hue=.1, sat=1.5, val=1.5):
-        image = image.convert("RGB")
         label = Image.fromarray(np.array(label))
 
         h, w = input_shape
@@ -78,7 +78,7 @@ class Generator(object):
         rand_jit2 = rand(1-jitter,1+jitter)
         new_ar = w/h * rand_jit1/rand_jit2
 
-        scale = rand(0.5, 1.5)
+        scale = rand(0.25, 2)
         if new_ar < 1:
             nh = int(scale*h)
             nw = int(nh*new_ar)
@@ -131,9 +131,10 @@ class Generator(object):
                 shuffle(self.train_lines)
             annotation_line = self.train_lines[i]
             name = annotation_line.split()[0]
+
             # 从文件中读取图像
-            jpg = Image.open(r"./VOCdevkit/VOC2007/JPEGImages" + '/' + name + ".jpg")
-            png = Image.open(r"./VOCdevkit/VOC2007/SegmentationClass" + '/' + name + ".png")
+            jpg = Image.open("./VOCdevkit/VOC2007/JPEGImages" + '/' + name + ".jpg")
+            png = Image.open("./VOCdevkit/VOC2007/SegmentationClass" + '/' + name + ".png")
 
             if random_data:
                 jpg, png = self.get_random_data(jpg,png,(int(self.image_size[1]),int(self.image_size[0])))

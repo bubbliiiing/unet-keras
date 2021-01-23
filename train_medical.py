@@ -1,19 +1,24 @@
 import time
+
 import keras
 import numpy as np
-from nets.unet import Unet
-from nets.unet_training_medical import Generator, dice_loss_with_CE, CE
-from keras.optimizers import Adam
-from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
-from keras.metrics import categorical_accuracy
 from keras import backend as K
+from keras.callbacks import (EarlyStopping, ModelCheckpoint, ReduceLROnPlateau,
+                             TensorBoard)
+from keras.metrics import categorical_accuracy
+from keras.optimizers import Adam
 from PIL import Image
+
+from nets.unet import Unet
+from nets.unet_training_medical import CE, Generator, dice_loss_with_CE
 from utils.metrics import Iou_score, f_score
 
-
 if __name__ == "__main__":    
-    inputs_size = [512,512,3]
     log_dir = "logs/"
+    #------------------------------#
+    #   输入图片的大小
+    #------------------------------#
+    inputs_size = [512,512,3]
     #--------------------------------------------------------------------#
     #   简单的医药分割只分背景和边缘
     #--------------------------------------------------------------------#
@@ -28,8 +33,11 @@ if __name__ == "__main__":
 
     # 获取model
     model = Unet(inputs_size,num_classes)
-    # model.summary()
-
+    
+    #-------------------------------------------#
+    #   权值文件的下载请看README
+    #   权值和主干特征提取网络一定要对应
+    #-------------------------------------------#
     model_path = "./model_data/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5"
     model.load_weights(model_path, by_name=True, skip_mismatch=True)
 
@@ -37,14 +45,17 @@ if __name__ == "__main__":
     with open(r"./Medical_Datasets/ImageSets/Segmentation/train.txt","r") as f:
         train_lines = f.readlines()
         
-    # 保存的方式，3世代保存一次
+    #-------------------------------------------------------------------------------#
+    #   训练参数的设置
+    #   logging表示tensorboard的保存地址
+    #   checkpoint用于设置权值保存的细节，period用于修改多少epoch保存一次
+    #   reduce_lr用于设置学习率下降的方式
+    #   early_stopping用于设定早停，表示模型基本收敛
+    #-------------------------------------------------------------------------------#
     checkpoint_period = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}.h5',
                                     monitor='loss', save_weights_only=True, save_best_only=False, period=1)
-    # 学习率下降的方式，acc三次不下降就下降学习率继续训练
     reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=3, verbose=1)
-    # 是否需要早停，当val_loss一直不下降的时候意味着模型基本训练完毕，可以停止
     early_stopping = EarlyStopping(monitor='loss', min_delta=0, patience=12, verbose=1)
-    # tensorboard
     tensorboard = TensorBoard(log_dir=log_dir)
 
     freeze_layers = 17
@@ -52,12 +63,20 @@ if __name__ == "__main__":
     for i in range(freeze_layers): model.layers[i].trainable = False
     print('Freeze the first {} layers of total {} layers.'.format(freeze_layers, len(model.layers)))
 
+    #------------------------------------------------------#
+    #   主干特征提取网络特征通用，冻结训练可以加快训练速度
+    #   也可以在训练初期防止权值被破坏。
+    #   Init_Epoch为起始世代
+    #   Freeze_Epoch为冻结训练的世代
+    #   Epoch总训练世代
+    #   提示OOM或者显存不足请调小Batch_size
+    #------------------------------------------------------#
     if True:
         lr = 1e-4
         Init_Epoch = 0
         Freeze_Epoch = 50
         Batch_size = 2
-        # 交叉熵
+
         model.compile(loss = dice_loss_with_CE() if dice_loss else CE(),
                 optimizer = Adam(lr=lr),
                 metrics = [f_score()])
@@ -65,11 +84,10 @@ if __name__ == "__main__":
 
         gen = Generator(Batch_size, train_lines, inputs_size, num_classes).generate()
         
-        # 开始训练
         model.fit_generator(gen,
                 steps_per_epoch=max(1, len(train_lines)//Batch_size),
-                epochs=50,
-                initial_epoch=0,
+                epochs=Freeze_Epoch,
+                initial_epoch=Init_Epoch,
                 callbacks=[checkpoint_period, reduce_lr,tensorboard])
     
     
@@ -80,16 +98,16 @@ if __name__ == "__main__":
         Freeze_Epoch = 50
         Unfreeze_Epoch = 100
         Batch_size = 2
-        # 交叉熵
+
         model.compile(loss = dice_loss_with_CE() if dice_loss else CE(),
                 optimizer = Adam(lr=lr),
                 metrics = [f_score()])
         print('Train on {} samples, with batch size {}.'.format(len(train_lines), Batch_size))
 
         gen = Generator(Batch_size, train_lines, inputs_size, num_classes).generate()
-        # 开始训练
+        
         model.fit_generator(gen,
                 steps_per_epoch=max(1, len(train_lines)//Batch_size),
-                epochs=100,
-                initial_epoch=50,
+                epochs=Unfreeze_Epoch,
+                initial_epoch=Freeze_Epoch,
                 callbacks=[checkpoint_period, reduce_lr,tensorboard])

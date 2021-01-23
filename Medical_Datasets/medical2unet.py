@@ -1,9 +1,13 @@
 import os
 import random 
+random.seed(0)
  
 segfilepath=r'./Medical_Datasets/Labels'
 saveBasePath=r"./Medical_Datasets/ImageSets/Segmentation"
  
+#----------------------------------------------------------------------#
+#   医药数据集的例子没有验证集
+#----------------------------------------------------------------------#
 trainval_percent=1
 train_percent=1
 
