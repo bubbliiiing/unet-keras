@@ -29,6 +29,7 @@ unet_medical.h5是使用示例的细胞分割数据集训练的。
 ## 文件下载
 训练所需的unet_voc.h5和unet_medical.h5可在百度网盘中下载。    
 链接: https://pan.baidu.com/s/1NIA3pOWYjseFI7Ofv6QoCg 提取码: f38i     
+
 VOC拓展数据集的百度网盘如下：  
 链接: https://pan.baidu.com/s/1BrR7AUM1XJvPWjKMIy2uEw 提取码: vszf    
 
@@ -51,7 +52,7 @@ _defaults = {
 }
 
 ```
-运行即可预测。  
+2. 运行即可预测。  
 ```python
 img/cell.png
 ```
