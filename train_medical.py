@@ -65,7 +65,6 @@ if __name__ == "__main__":
     reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=3, verbose=1)
     early_stopping = EarlyStopping(monitor='loss', min_delta=0, patience=12, verbose=1)
     tensorboard = TensorBoard(log_dir=log_dir)
-    loss_history = LossHistory(log_dir)
 
     freeze_layers = 17
     for i in range(freeze_layers): model.layers[i].trainable = False
@@ -101,7 +100,7 @@ if __name__ == "__main__":
                 steps_per_epoch=epoch_size,
                 epochs=Freeze_Epoch,
                 initial_epoch=Init_Epoch,
-                callbacks=[checkpoint_period, reduce_lr,tensorboard])
+                callbacks=[checkpoint_period, reduce_lr, early_stopping, tensorboard])
     
     
     for i in range(freeze_layers): model.layers[i].trainable = True
@@ -128,4 +127,4 @@ if __name__ == "__main__":
                 steps_per_epoch=epoch_size,
                 epochs=Unfreeze_Epoch,
                 initial_epoch=Freeze_Epoch,
-                callbacks=[checkpoint_period, reduce_lr,tensorboard])
+                callbacks=[checkpoint_period, reduce_lr, early_stopping, tensorboard])
