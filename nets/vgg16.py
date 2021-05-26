@@ -1,4 +1,5 @@
 from keras import layers
+from keras.initializers import random_normal
 
 
 def VGG16(img_input):
@@ -7,10 +8,12 @@ def VGG16(img_input):
     x = layers.Conv2D(64, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block1_conv1')(img_input)
     x = layers.Conv2D(64, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block1_conv2')(x)
     feat1 = x
     # 512,512,64 -> 256,256,64
@@ -21,10 +24,12 @@ def VGG16(img_input):
     x = layers.Conv2D(128, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block2_conv1')(x)
     x = layers.Conv2D(128, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block2_conv2')(x)
     feat2 = x
     # 256,256,128 -> 128,128,128
@@ -36,14 +41,17 @@ def VGG16(img_input):
     x = layers.Conv2D(256, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block3_conv1')(x)
     x = layers.Conv2D(256, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block3_conv2')(x)
     x = layers.Conv2D(256, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block3_conv3')(x)
     feat3 = x
     # 128,128,256 -> 64,64,256
@@ -54,14 +62,17 @@ def VGG16(img_input):
     x = layers.Conv2D(512, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block4_conv1')(x)
     x = layers.Conv2D(512, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block4_conv2')(x)
     x = layers.Conv2D(512, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block4_conv3')(x)
     feat4 = x
     # 64,64,512 -> 32,32,512
@@ -72,14 +83,17 @@ def VGG16(img_input):
     x = layers.Conv2D(512, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block5_conv1')(x)
     x = layers.Conv2D(512, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block5_conv2')(x)
     x = layers.Conv2D(512, (3, 3),
                       activation='relu',
                       padding='same',
+                      kernel_initializer = random_normal(stddev=0.02), 
                       name='block5_conv3')(x)
     feat5 = x
     return feat1, feat2, feat3, feat4, feat5

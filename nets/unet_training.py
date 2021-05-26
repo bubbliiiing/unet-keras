@@ -1,13 +1,14 @@
+import os
 from random import shuffle
 
 import cv2
 import keras
+import matplotlib.pyplot as plt
 import numpy as np
+import scipy.signal
 import tensorflow as tf
 from keras import backend as K
-from matplotlib.colors import hsv_to_rgb, rgb_to_hsv
 from PIL import Image
-from utils.metrics import f_score
 
 
 def dice_loss_with_CE(beta=1, smooth = 1e-5):
@@ -62,12 +63,13 @@ def letterbox_image(image, label , size):
 
 
 class Generator(object):
-    def __init__(self,batch_size,train_lines,image_size,num_classes):
-        self.batch_size = batch_size
-        self.train_lines = train_lines
-        self.train_batches = len(train_lines)
-        self.image_size = image_size
-        self.num_classes = num_classes
+    def __init__(self,batch_size,train_lines,image_size,num_classes,dataset_path):
+        self.batch_size     = batch_size
+        self.train_lines    = train_lines
+        self.train_batches  = len(train_lines)
+        self.image_size     = image_size
+        self.num_classes    = num_classes
+        self.dataset_path   = dataset_path
 
     def get_random_data(self, image, label, input_shape, jitter=.3, hue=.1, sat=1.5, val=1.5):
         label = Image.fromarray(np.array(label))
@@ -133,8 +135,8 @@ class Generator(object):
             name = annotation_line.split()[0]
 
             # 从文件中读取图像
-            jpg = Image.open("./VOCdevkit/VOC2007/JPEGImages" + '/' + name + ".jpg")
-            png = Image.open("./VOCdevkit/VOC2007/SegmentationClass" + '/' + name + ".png")
+            jpg = Image.open(os.path.join(os.path.join(self.dataset_path, "JPEGImages"), name + ".jpg"))
+            png = Image.open(os.path.join(os.path.join(self.dataset_path, "SegmentationClass"), name + ".png"))
 
             if random_data:
                 jpg, png = self.get_random_data(jpg,png,(int(self.image_size[1]),int(self.image_size[0])))
@@ -143,11 +145,13 @@ class Generator(object):
             
             inputs.append(np.array(jpg)/255)
             
-            # 从文件中读取图像
             png = np.array(png)
             png[png >= self.num_classes] = self.num_classes
-            
-            # 转化成one_hot的形式
+            #-------------------------------------------------------#
+            #   转化成one_hot的形式
+            #   在这里需要+1是因为voc数据集有些标签具有白边部分
+            #   我们需要将白边部分进行忽略，+1的目的是方便忽略。
+            #-------------------------------------------------------#
             seg_labels = np.eye(self.num_classes+1)[png.reshape([-1])]
             seg_labels = seg_labels.reshape((int(self.image_size[1]),int(self.image_size[0]),self.num_classes+1))
             
@@ -159,3 +163,55 @@ class Generator(object):
                 inputs = []
                 targets = []
                 yield tmp_inp, tmp_targets
+
+class LossHistory(keras.callbacks.Callback):
+    def __init__(self, log_dir):
+        import datetime
+        curr_time = datetime.datetime.now()
+        time_str = datetime.datetime.strftime(curr_time,'%Y_%m_%d_%H_%M_%S')
+        self.log_dir    = log_dir
+        self.time_str   = time_str
+        self.save_path  = os.path.join(self.log_dir, "loss_" + str(self.time_str))  
+        self.losses     = []
+        self.val_loss   = []
+        
+        os.makedirs(self.save_path)
+
+    def on_epoch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
+        self.val_loss.append(logs.get('val_loss'))
+        with open(os.path.join(self.save_path, "epoch_loss_" + str(self.time_str) + ".txt"), 'a') as f:
+            f.write(str(logs.get('loss')))
+            f.write("\n")
+        with open(os.path.join(self.save_path, "epoch_val_loss_" + str(self.time_str) + ".txt"), 'a') as f:
+            f.write(str(logs.get('val_loss')))
+            f.write("\n")
+        self.loss_plot()
+
+    def loss_plot(self):
+        iters = range(len(self.losses))
+
+        plt.figure()
+        plt.plot(iters, self.losses, 'red', linewidth = 2, label='train loss')
+        plt.plot(iters, self.val_loss, 'coral', linewidth = 2, label='val loss')
+        try:
+            if len(self.losses) < 25:
+                num = 5
+            else:
+                num = 15
+            
+            plt.plot(iters, scipy.signal.savgol_filter(self.losses, num, 3), 'green', linestyle = '--', linewidth = 2, label='smooth train loss')
+            plt.plot(iters, scipy.signal.savgol_filter(self.val_loss, num, 3), '#8B4513', linestyle = '--', linewidth = 2, label='smooth val loss')
+        except:
+            pass
+
+        plt.grid(True)
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('A Loss Curve')
+        plt.legend(loc="upper right")
+
+        plt.savefig(os.path.join(self.save_path, "epoch_loss_" + str(self.time_str) + ".png"))
+
+        plt.cla()
+        plt.close("all")

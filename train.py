@@ -1,17 +1,11 @@
-import time
+import os
 
-import keras
-import numpy as np
-from keras import backend as K
 from keras.callbacks import (EarlyStopping, ModelCheckpoint, ReduceLROnPlateau,
                              TensorBoard)
-from keras.metrics import categorical_accuracy
 from keras.optimizers import Adam
-from keras.utils.data_utils import get_file
-from PIL import Image
 
 from nets.unet import Unet
-from nets.unet_training import CE, Generator, dice_loss_with_CE
+from nets.unet_training import CE, Generator, LossHistory, dice_loss_with_CE
 from utils.metrics import Iou_score, f_score
 
 if __name__ == "__main__":    
@@ -32,6 +26,10 @@ if __name__ == "__main__":
     #   种类多（十几类）时，如果batch_size比较小（10以下），那么设置为False
     #---------------------------------------------------------------------# 
     dice_loss = False
+    #------------------------------#
+    #   数据集路径
+    #------------------------------#
+    dataset_path = "VOCdevkit/VOC2007/"
 
     # 获取model
     model = Unet(inputs_size,num_classes)
@@ -40,15 +38,15 @@ if __name__ == "__main__":
     #   权值文件的下载请看README
     #   权值和主干特征提取网络一定要对应
     #-------------------------------------------#
-    model_path = "./model_data/unet_voc.h5"
+    model_path = "model_data/unet_voc.h5"
     model.load_weights(model_path, by_name=True, skip_mismatch=True)
 
     # 打开数据集的txt
-    with open(r"VOCdevkit/VOC2007/ImageSets/Segmentation/train.txt","r") as f:
+    with open(os.path.join(dataset_path, "ImageSets/Segmentation/train.txt"),"r") as f:
         train_lines = f.readlines()
 
     # 打开数据集的txt
-    with open(r"VOCdevkit/VOC2007/ImageSets/Segmentation/val.txt","r") as f:
+    with open(os.path.join(dataset_path, "ImageSets/Segmentation/val.txt"),"r") as f:
         val_lines = f.readlines()
         
     #-------------------------------------------------------------------------------#
@@ -63,9 +61,9 @@ if __name__ == "__main__":
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1)
     early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1)
     tensorboard = TensorBoard(log_dir=log_dir)
+    loss_history = LossHistory(log_dir)
 
     freeze_layers = 17
-
     for i in range(freeze_layers): model.layers[i].trainable = False
     print('Freeze the first {} layers of total {} layers.'.format(freeze_layers, len(model.layers)))
 
@@ -78,48 +76,62 @@ if __name__ == "__main__":
     #   提示OOM或者显存不足请调小Batch_size
     #------------------------------------------------------#
     if True:
-        lr = 1e-4
-        Init_Epoch = 0
-        Freeze_Epoch = 50
-        Batch_size = 2
+        lr              = 1e-4
+        Init_Epoch      = 0
+        Freeze_Epoch    = 50
+        Batch_size      = 2
 
         model.compile(loss = dice_loss_with_CE() if dice_loss else CE(),
                 optimizer = Adam(lr=lr),
                 metrics = [f_score()])
+
+        gen             = Generator(Batch_size, train_lines, inputs_size, num_classes, dataset_path).generate()
+        gen_val         = Generator(Batch_size, val_lines, inputs_size, num_classes, dataset_path).generate(False)
+
+        epoch_size      = len(train_lines) // Batch_size
+        epoch_size_val  = len(val_lines) // Batch_size
+
+        if epoch_size == 0 or epoch_size_val == 0:
+            raise ValueError("数据集过小，无法进行训练，请扩充数据集。")
+
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(len(train_lines), len(val_lines), Batch_size))
-
-        gen = Generator(Batch_size, train_lines, inputs_size, num_classes).generate()
-        gen_val = Generator(Batch_size, val_lines, inputs_size, num_classes).generate(False)
-
         model.fit_generator(gen,
-                steps_per_epoch=max(1, len(train_lines)//Batch_size),
+                steps_per_epoch=epoch_size,
                 validation_data=gen_val,
-                validation_steps=max(1, len(val_lines)//Batch_size),
+                validation_steps=epoch_size_val,
                 epochs=Freeze_Epoch,
                 initial_epoch=Init_Epoch,
-                callbacks=[checkpoint_period, reduce_lr,tensorboard])
+                callbacks=[checkpoint_period, reduce_lr, early_stopping, tensorboard, loss_history])
     
     
     for i in range(freeze_layers): model.layers[i].trainable = True
 
     if True:
-        lr = 1e-5
-        Freeze_Epoch = 50
-        Unfreeze_Epoch = 100
-        Batch_size = 2
+        lr              = 1e-5
+        Freeze_Epoch    = 50
+        Unfreeze_Epoch  = 100
+        Batch_size      = 2
 
         model.compile(loss = dice_loss_with_CE() if dice_loss else CE(),
                 optimizer = Adam(lr=lr),
                 metrics = [f_score()])
-        print('Train on {} samples, val on {} samples, with batch size {}.'.format(len(train_lines), len(val_lines), Batch_size))
 
-        gen = Generator(Batch_size, train_lines, inputs_size, num_classes).generate()
-        gen_val = Generator(Batch_size, val_lines, inputs_size, num_classes).generate(False)
+        gen             = Generator(Batch_size, train_lines, inputs_size, num_classes, dataset_path).generate()
+        gen_val         = Generator(Batch_size, val_lines, inputs_size, num_classes, dataset_path).generate(False)
         
+        epoch_size      = len(train_lines) // Batch_size
+        epoch_size_val  = len(val_lines) // Batch_size
+
+        if epoch_size == 0 or epoch_size_val == 0:
+            raise ValueError("数据集过小，无法进行训练，请扩充数据集。")
+
+        print('Train on {} samples, val on {} samples, with batch size {}.'.format(len(train_lines), len(val_lines), Batch_size))
         model.fit_generator(gen,
-                steps_per_epoch=max(1, len(train_lines)//Batch_size),
+                steps_per_epoch=epoch_size,
                 validation_data=gen_val,
-                validation_steps=max(1, len(val_lines)//Batch_size),
+                validation_steps=epoch_size_val,
                 epochs=Unfreeze_Epoch,
                 initial_epoch=Freeze_Epoch,
-                callbacks=[checkpoint_period, reduce_lr,tensorboard])
+                callbacks=[checkpoint_period, reduce_lr, early_stopping, tensorboard, loss_history])
+
+                

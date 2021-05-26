@@ -1,13 +1,11 @@
+import os
 from random import shuffle
 
 import cv2
-import keras
 import numpy as np
 import tensorflow as tf
 from keras import backend as K
-from matplotlib.colors import hsv_to_rgb, rgb_to_hsv
 from PIL import Image
-from utils.metrics import f_score
 
 
 def dice_loss_with_CE(beta=1, smooth = 1e-5):
@@ -62,12 +60,13 @@ def letterbox_image(image, label , size):
 
 
 class Generator(object):
-    def __init__(self,batch_size,train_lines,image_size,num_classes):
-        self.batch_size = batch_size
-        self.train_lines = train_lines
-        self.train_batches = len(train_lines)
-        self.image_size = image_size
-        self.num_classes = num_classes
+    def __init__(self,batch_size,train_lines,image_size,num_classes,dataset_path):
+        self.batch_size     = batch_size
+        self.train_lines    = train_lines
+        self.train_batches  = len(train_lines)
+        self.image_size     = image_size
+        self.num_classes    = num_classes
+        self.dataset_path   = dataset_path
 
     def get_random_data(self, image, label, input_shape, jitter=.3, hue=.0, sat=1.1, val=1.1):
         label = Image.fromarray(np.array(label))
@@ -133,8 +132,8 @@ class Generator(object):
             name = annotation_line.split()[0]
 
             # 从文件中读取图像
-            jpg = Image.open("./Medical_Datasets/Images" + '/' + name + ".png")
-            png = Image.open("./Medical_Datasets/Labels" + '/' + name + ".png")
+            jpg = Image.open(os.path.join(os.path.join(self.dataset_path, "Images"), name + ".png"))
+            png = Image.open(os.path.join(os.path.join(self.dataset_path, "Labels"), name + ".png"))
 
             if random_data:
                 jpg, png = self.get_random_data(jpg,png,(int(self.image_size[1]),int(self.image_size[0])))
@@ -142,8 +141,6 @@ class Generator(object):
                 jpg, png = letterbox_image(jpg, png, (int(self.image_size[1]),int(self.image_size[0])))
             
             inputs.append(np.array(jpg)/255)
-            
-            # 从文件中读取图像
             png = np.array(png)
             
             # 转化成one_hot的形式

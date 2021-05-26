@@ -1,18 +1,23 @@
-import time
+import os
 
-import keras
-import numpy as np
-from keras import backend as K
 from keras.callbacks import (EarlyStopping, ModelCheckpoint, ReduceLROnPlateau,
                              TensorBoard)
-from keras.metrics import categorical_accuracy
 from keras.optimizers import Adam
-from PIL import Image
 
 from nets.unet import Unet
+from nets.unet_training import LossHistory
 from nets.unet_training_medical import CE, Generator, dice_loss_with_CE
 from utils.metrics import Iou_score, f_score
 
+'''
+需要注意的是，这个医药数据集的训练只是一个例子，用于展示数据集不是voc格式时要如何进行训练。
+所以这个文件只是根据我网上找到的医药数据集特殊建立的训练文件。只用于观看医药数据集的训练效果。
+不可以计算miou等性能指标。
+
+如果大家有自己的医药数据集需要标注后训练，完全可以按照视频里面的教程
+首先利用labelme标注图片，转换称VOC格式后利用train.py进行训练。
+训练自己标注的医药数据集的步骤和正常数据集的步骤一摸一样，不需要用到这个train_medical.py！
+'''
 if __name__ == "__main__":    
     log_dir = "logs/"
     #------------------------------#
@@ -30,6 +35,10 @@ if __name__ == "__main__":
     #   种类多（十几类）时，如果batch_size比较小（10以下），那么设置为False
     #---------------------------------------------------------------------# 
     dice_loss = True
+    #------------------------------#
+    #   数据集路径
+    #------------------------------#
+    dataset_path = "Medical_Datasets/"
 
     # 获取model
     model = Unet(inputs_size,num_classes)
@@ -41,10 +50,9 @@ if __name__ == "__main__":
     model_path = "./model_data/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5"
     model.load_weights(model_path, by_name=True, skip_mismatch=True)
 
-    # 打开数据集的txt
-    with open(r"./Medical_Datasets/ImageSets/Segmentation/train.txt","r") as f:
+    with open(os.path.join(dataset_path, "ImageSets/Segmentation/train.txt"),"r") as f:
         train_lines = f.readlines()
-        
+
     #-------------------------------------------------------------------------------#
     #   训练参数的设置
     #   logging表示tensorboard的保存地址
@@ -57,9 +65,9 @@ if __name__ == "__main__":
     reduce_lr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=3, verbose=1)
     early_stopping = EarlyStopping(monitor='loss', min_delta=0, patience=12, verbose=1)
     tensorboard = TensorBoard(log_dir=log_dir)
+    loss_history = LossHistory(log_dir)
 
     freeze_layers = 17
-
     for i in range(freeze_layers): model.layers[i].trainable = False
     print('Freeze the first {} layers of total {} layers.'.format(freeze_layers, len(model.layers)))
 
@@ -72,20 +80,25 @@ if __name__ == "__main__":
     #   提示OOM或者显存不足请调小Batch_size
     #------------------------------------------------------#
     if True:
-        lr = 1e-4
-        Init_Epoch = 0
-        Freeze_Epoch = 50
-        Batch_size = 2
+        lr              = 1e-4
+        Init_Epoch      = 0
+        Freeze_Epoch    = 50
+        Batch_size      = 2
 
         model.compile(loss = dice_loss_with_CE() if dice_loss else CE(),
                 optimizer = Adam(lr=lr),
                 metrics = [f_score()])
-        print('Train on {} samples, with batch size {}.'.format(len(train_lines), Batch_size))
 
-        gen = Generator(Batch_size, train_lines, inputs_size, num_classes).generate()
+        gen             = Generator(Batch_size, train_lines, inputs_size, num_classes, dataset_path).generate()
         
+        epoch_size      = len(train_lines) // Batch_size
+
+        if epoch_size == 0:
+            raise ValueError("数据集过小，无法进行训练，请扩充数据集。")
+
+        print('Train on {} samples, with batch size {}.'.format(len(train_lines), Batch_size))
         model.fit_generator(gen,
-                steps_per_epoch=max(1, len(train_lines)//Batch_size),
+                steps_per_epoch=epoch_size,
                 epochs=Freeze_Epoch,
                 initial_epoch=Init_Epoch,
                 callbacks=[checkpoint_period, reduce_lr,tensorboard])
@@ -94,20 +107,25 @@ if __name__ == "__main__":
     for i in range(freeze_layers): model.layers[i].trainable = True
 
     if True:
-        lr = 1e-5
-        Freeze_Epoch = 50
-        Unfreeze_Epoch = 100
-        Batch_size = 2
+        lr              = 1e-5
+        Freeze_Epoch    = 50
+        Unfreeze_Epoch  = 100
+        Batch_size      = 2
 
         model.compile(loss = dice_loss_with_CE() if dice_loss else CE(),
                 optimizer = Adam(lr=lr),
                 metrics = [f_score()])
-        print('Train on {} samples, with batch size {}.'.format(len(train_lines), Batch_size))
 
-        gen = Generator(Batch_size, train_lines, inputs_size, num_classes).generate()
+        gen             = Generator(Batch_size, train_lines, inputs_size, num_classes, dataset_path).generate()
         
+        epoch_size      = len(train_lines) // Batch_size
+
+        if epoch_size == 0:
+            raise ValueError("数据集过小，无法进行训练，请扩充数据集。")
+
+        print('Train on {} samples, with batch size {}.'.format(len(train_lines), Batch_size))
         model.fit_generator(gen,
-                steps_per_epoch=max(1, len(train_lines)//Batch_size),
+                steps_per_epoch=epoch_size,
                 epochs=Unfreeze_Epoch,
                 initial_epoch=Freeze_Epoch,
                 callbacks=[checkpoint_period, reduce_lr,tensorboard])

@@ -1,6 +1,6 @@
 import colorsys
 import copy
-import os
+import time
 
 import numpy as np
 from PIL import Image
@@ -45,10 +45,7 @@ class Unet(object):
         self.model.load_weights(self.model_path)
         print('{} model loaded.'.format(self.model_path))
         
-        
-        if self.num_classes == 2:
-            self.colors = [(255, 255, 255),  (0, 0, 0)]
-        elif self.num_classes <= 21:
+        if self.num_classes <= 21:
             self.colors = [(0, 0, 0), (128, 0, 0), (0, 128, 0), (128, 128, 0), (0, 0, 128), (128, 0, 128), (0, 128, 128), 
                     (128, 128, 128), (64, 0, 0), (192, 0, 0), (64, 128, 0), (192, 128, 0), (64, 0, 128), (192, 0, 128), 
                     (64, 128, 128), (192, 128, 128), (0, 64, 0), (128, 64, 0), (0, 192, 0), (128, 192, 0), (0, 64, 128), (128, 64, 12)]
@@ -125,3 +122,28 @@ class Unet(object):
             image = Image.blend(old_img,image,0.7)
 
         return image
+
+    def get_FPS(self, image, test_interval):
+        orininal_h = np.array(image).shape[0]
+        orininal_w = np.array(image).shape[1]
+
+        img, nw, nh = self.letterbox_image(image,(self.model_image_size[1],self.model_image_size[0]))
+        img = np.asarray([np.array(img)/255])
+
+        pr = self.model.predict(img)[0]
+        pr = pr.argmax(axis=-1).reshape([self.model_image_size[0],self.model_image_size[1]])
+        pr = pr[int((self.model_image_size[0]-nh)//2):int((self.model_image_size[0]-nh)//2+nh), int((self.model_image_size[1]-nw)//2):int((self.model_image_size[1]-nw)//2+nw)]
+        
+        image = Image.fromarray(np.uint8(pr)).resize((orininal_w,orininal_h), Image.NEAREST)
+
+        t1 = time.time()
+        for _ in range(test_interval):
+            pr = self.model.predict(img)[0]
+            pr = pr.argmax(axis=-1).reshape([self.model_image_size[0],self.model_image_size[1]])
+            pr = pr[int((self.model_image_size[0]-nh)//2):int((self.model_image_size[0]-nh)//2+nh), int((self.model_image_size[1]-nw)//2):int((self.model_image_size[1]-nw)//2+nw)]
+            image = Image.fromarray(np.uint8(pr)).resize((orininal_w,orininal_h), Image.NEAREST)
+            
+        t2 = time.time()
+        tact_time = (t2 - t1) / test_interval
+        return tact_time
+        
