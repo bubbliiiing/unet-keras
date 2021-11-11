@@ -1,11 +1,11 @@
+from keras.initializers import random_normal
 from keras.layers import *
 from keras.models import *
 
 from nets.vgg16 import VGG16
-from keras.initializers import random_normal
 
 
-def Unet(input_shape=(256,256,3), num_classes=21):
+def Unet(input_shape=(512, 512, 3), num_classes = 21):
     inputs = Input(input_shape)
     #-------------------------------#
     #   获得五个有效特征层
@@ -56,4 +56,3 @@ def Unet(input_shape=(256,256,3), num_classes=21):
 
     model = Model(inputs=inputs, outputs=P1)
     return model
-
