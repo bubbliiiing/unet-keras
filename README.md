@@ -6,9 +6,9 @@
 2. [所需环境 Environment](#所需环境)
 3. [注意事项 Attention](#注意事项)
 4. [文件下载 Download](#文件下载)
-5. [预测步骤 How2predict](#预测步骤)
-6. [训练步骤 How2train](#训练步骤)
-7. [miou计算 miou](#miou计算)
+5. [训练步骤 How2train](#训练步骤)
+6. [预测步骤 How2predict](#预测步骤)
+7. [评估步骤 miou](#评估步骤)
 8. [参考资料 Reference](#Reference)
 
 ## 性能情况
