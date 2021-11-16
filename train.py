@@ -186,6 +186,12 @@ if __name__ == "__main__":
         lr          = Freeze_lr
         start_epoch = Init_Epoch
         end_epoch   = Freeze_Epoch
+
+        epoch_step      = len(train_lines) // batch_size
+        epoch_step_val  = len(val_lines) // batch_size
+        
+        if epoch_step == 0 or epoch_step_val == 0:
+            raise ValueError("数据集过小，无法进行训练，请扩充数据集。")
         
         model.compile(loss = loss,
                 optimizer = Adam(lr=lr),
@@ -193,12 +199,6 @@ if __name__ == "__main__":
 
         train_dataloader    = UnetDataset(train_lines, input_shape, batch_size, num_classes, True, VOCdevkit_path)
         val_dataloader      = UnetDataset(val_lines, input_shape, batch_size, num_classes, False, VOCdevkit_path)
-
-        epoch_step      = len(train_lines) // batch_size
-        epoch_step_val  = len(val_lines) // batch_size
-        
-        if epoch_step == 0 or epoch_step_val == 0:
-            raise ValueError("数据集过小，无法进行训练，请扩充数据集。")
 
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(len(train_lines), len(val_lines), batch_size))
         model.fit_generator(
@@ -221,6 +221,12 @@ if __name__ == "__main__":
         lr          = Unfreeze_lr
         start_epoch = Freeze_Epoch
         end_epoch   = UnFreeze_Epoch
+
+        epoch_step      = len(train_lines) // batch_size
+        epoch_step_val  = len(val_lines) // batch_size
+        
+        if epoch_step == 0 or epoch_step_val == 0:
+            raise ValueError("数据集过小，无法进行训练，请扩充数据集。")
         
         model.compile(loss = loss,
                 optimizer = Adam(lr=lr),
@@ -228,12 +234,6 @@ if __name__ == "__main__":
                 
         train_dataloader    = UnetDataset(train_lines, input_shape, batch_size, num_classes, True, VOCdevkit_path)
         val_dataloader      = UnetDataset(val_lines, input_shape, batch_size, num_classes, False, VOCdevkit_path)
-
-        epoch_step      = len(train_lines) // batch_size
-        epoch_step_val  = len(val_lines) // batch_size
-        
-        if epoch_step == 0 or epoch_step_val == 0:
-            raise ValueError("数据集过小，无法进行训练，请扩充数据集。")
 
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(len(train_lines), len(val_lines), batch_size))
         model.fit_generator(
