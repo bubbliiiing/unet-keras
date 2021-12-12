@@ -16,7 +16,7 @@
 | 训练数据集 | 权值文件名称 | 测试数据集 | 输入图片大小 | mIOU | 
 | :-----: | :-----: | :------: | :------: | :------: | 
 | VOC12+SBD | [unet_vgg_voc.h5](https://github.com/bubbliiiing/unet-keras/releases/download/v1.0/unet_vgg_voc.h5) | VOC-Val12 | 512x512| 45.48 | 
-| VOC12+SBD | [unet_resnet_voc.h5](https://github.com/bubbliiiing/unet-keras/releases/download/v1.0/unet_resnet_voc.h5) | VOC-Val12 | 512x512| 55.74 | 
+| VOC12+SBD | [unet_resnet_voc.h5](https://github.com/bubbliiiing/unet-keras/releases/download/v1.0/unet_resnet_voc.h5) | VOC-Val12 | 512x512| 64.12 | 
 
 ### 所需环境
 tensorflow-gpu==1.13.1    
