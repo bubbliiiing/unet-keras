@@ -23,8 +23,8 @@ tensorflow-gpu==1.13.1
 keras==2.1.5   
 
 ### 注意事项
-unet_voc.h5是基于VOC拓展数据集训练的。  
-unet_medical.h5是使用示例的细胞分割数据集训练的。  
+unet_vgg_voc.h5是基于VOC拓展数据集训练的。  
+unet_vgg_medical.h5是使用示例的细胞分割数据集训练的。  
 在使用时需要注意区分。  
 
 ### 文件下载
@@ -56,13 +56,13 @@ VOC拓展数据集的百度网盘如下：
 ### 预测步骤
 #### 一、使用预训练权重
 ##### a、VOC预训练权重
-1. 下载完库后解压，如果想要利用voc训练好的权重进行预测，在百度网盘或者release下载unet_voc.h5，放入model_data，运行即可预测。  
+1. 下载完库后解压，如果想要利用voc训练好的权重进行预测，在百度网盘或者release下载权值，放入model_data，运行即可预测。  
 ```python
 img/street.jpg
 ```    
 2. 在predict.py里面进行设置可以进行fps测试和video视频检测。    
 ##### b、医药预训练权重
-1. 下载完库后解压，如果想要利用医药数据集训练好的权重进行预测，在百度网盘或者release下载unet_medical.h5，放入model_data，修改unet.py中的model_path和num_classes；
+1. 下载完库后解压，如果想要利用医药数据集训练好的权重进行预测，在百度网盘或者release下载权值，放入model_data，修改unet.py中的model_path和num_classes；
 ```python
 _defaults = {
     #-------------------------------------------------------------------#
