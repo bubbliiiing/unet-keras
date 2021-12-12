@@ -23,11 +23,15 @@ class Unet(object):
         #   训练好后logs文件夹下存在多个权值文件，选择验证集损失较低的即可。
         #   验证集损失较低不代表miou较高，仅代表该权值在验证集上泛化性能较好。
         #-------------------------------------------------------------------#
-        "model_path"        : 'model_data/unet_voc.h5',
+        "model_path"        : 'model_data/unet_vgg_voc.h5',
         #----------------------------------------#
         #   所需要区分的类的个数+1
         #----------------------------------------#
         "num_classes"       : 21,
+        #----------------------------------------#
+        #   所使用的的主干网络：vgg、resnet50   
+        #----------------------------------------#
+        "backbone"          : "vgg",
         #----------------------------------------#
         #   输入图片的大小
         #----------------------------------------#
@@ -70,7 +74,7 @@ class Unet(object):
         #-------------------------------#
         #   载入模型与权值
         #-------------------------------#
-        self.model = unet([self.input_shape[0], self.input_shape[1], 3], self.num_classes)
+        self.model = unet([self.input_shape[0], self.input_shape[1], 3], self.num_classes, self.backbone)
 
         self.model.load_weights(self.model_path)
         print('{} model loaded.'.format(self.model_path))

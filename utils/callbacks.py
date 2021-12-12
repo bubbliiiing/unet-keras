@@ -1,9 +1,7 @@
 import os
 
 import keras
-import matplotlib
-matplotlib.use('Agg')
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 import scipy.signal
 from keras import backend as K
 

@@ -3,9 +3,10 @@ from keras.layers import *
 from keras.models import *
 
 from nets.vgg16 import VGG16
+from nets.resnet50 import ResNet50
 
 
-def Unet(input_shape=(512, 512, 3), num_classes = 21):
+def Unet(input_shape=(512, 512, 3), num_classes = 21, backbone = "vgg"):
     inputs = Input(input_shape)
     #-------------------------------#
     #   获得五个有效特征层
@@ -15,7 +16,12 @@ def Unet(input_shape=(512, 512, 3), num_classes = 21):
     #   feat4   64,64,512
     #   feat5   32,32,512
     #-------------------------------#
-    feat1, feat2, feat3, feat4, feat5 = VGG16(inputs) 
+    if backbone == "vgg":
+        feat1, feat2, feat3, feat4, feat5 = VGG16(inputs) 
+    elif backbone == "resnet50":
+        feat1, feat2, feat3, feat4, feat5 = ResNet50(inputs) 
+    else:
+        raise ValueError('Unsupported backbone - `{}`, Use vgg, resnet50.'.format(backbone))
       
     channels = [64, 128, 256, 512]
 
@@ -51,8 +57,18 @@ def Unet(input_shape=(512, 512, 3), num_classes = 21):
     P1 = Conv2D(channels[0], 3, activation='relu', padding='same', kernel_initializer = random_normal(stddev=0.02))(P1)
     P1 = Conv2D(channels[0], 3, activation='relu', padding='same', kernel_initializer = random_normal(stddev=0.02))(P1)
 
-    # 512, 512, 64 -> 512, 512, num_classes
-    P1 = Conv2D(num_classes, 1, activation="softmax")(P1)
+    if backbone == "vgg":
+        # 512, 512, 64 -> 512, 512, num_classes
+        P1 = Conv2D(num_classes, 1, activation="softmax")(P1)
+    elif backbone == "resnet50":
+        ResNet50_up = UpSampling2D(size=(2, 2))(P1)
+        # 512, 512, 192 -> 512, 512, 64
+        ResNet50_up = Conv2D(channels[0], 3, activation='relu', padding='same', kernel_initializer = random_normal(stddev=0.02))(ResNet50_up)
+        ResNet50_up = Conv2D(channels[0], 3, activation='relu', padding='same', kernel_initializer = random_normal(stddev=0.02))(ResNet50_up)
 
+        P1 = Conv2D(num_classes, 1, activation="softmax")(ResNet50_up)
+    else:
+        raise ValueError('Unsupported backbone - `{}`, Use vgg, resnet50.'.format(backbone))
+        
     model = Model(inputs=inputs, outputs=P1)
     return model
