@@ -296,7 +296,7 @@ if __name__ == "__main__":
                                 monitor = 'val_loss', save_weights_only = True, save_best_only = False, period = save_period)
         early_stopping  = EarlyStopping(monitor='val_loss', min_delta = 0, patience = 10, verbose = 1)
         lr_scheduler    = LearningRateScheduler(lr_scheduler_func, verbose = 1)
-        callbacks       = [logging, loss_history, checkpoint, lr_scheduler, early_stopping]
+        callbacks       = [logging, loss_history, checkpoint, lr_scheduler]
 
         if start_epoch < end_epoch:
             print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
@@ -331,7 +331,7 @@ if __name__ == "__main__":
             #---------------------------------------#
             lr_scheduler_func = get_lr_scheduler(lr_decay_type, Init_lr_fit, Min_lr_fit, UnFreeze_Epoch)
             lr_scheduler    = LearningRateScheduler(lr_scheduler_func, verbose = 1)
-            callbacks       = [logging, loss_history, checkpoint, lr_scheduler, early_stopping]
+            callbacks       = [logging, loss_history, checkpoint, lr_scheduler]
             
             for i in range(len(model.layers)): 
                 model.layers[i].trainable = True
