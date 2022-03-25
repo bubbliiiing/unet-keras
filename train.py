@@ -48,7 +48,8 @@ if __name__ == "__main__":
     num_classes     = 21
     #-------------------------------#
     #   主干网络选择
-    #   vgg、resnet50
+    #   vgg
+    #   resnet50
     #-------------------------------#
     backbone        = "vgg"
     #----------------------------------------------------------------------------------------------------------------------------#
@@ -61,7 +62,7 @@ if __name__ == "__main__":
     #   同时修改下方的 冻结阶段 或者 解冻阶段 的参数，来保证模型epoch的连续性。
     #   
     #   当model_path = ''的时候不加载整个模型的权值。
-    #   
+    #
     #   此处使用的是整个模型的权重，因此是在train.py进行加载的。
     #   如果想要让模型从主干的预训练权值开始训练，则设置model_path为主干网络的权值，此时仅加载主干。
     #   如果想要让模型从0开始训练，则设置model_path = ''，下面的Freeze_Train = Fasle，此时从0开始训练，且没有冻结主干的过程。
@@ -70,9 +71,9 @@ if __name__ == "__main__":
     #   如果一定要从0开始，可以了解imagenet数据集，首先训练分类模型，获得网络的主干部分权值，分类模型的 主干部分 和该模型通用，基于此进行训练。
     #----------------------------------------------------------------------------------------------------------------------------#
     model_path      = "model_data/unet_vgg_voc.h5"
-    #-------------------------------#
-    #   输入图片的大小
-    #-------------------------------#
+    #---------------------------------------------------------#
+    #   input_shape 输入图片的大小，32的倍数
+    #---------------------------------------------------------#
     input_shape     = [512, 512]
 
     #----------------------------------------------------------------------------------------------------------------------------#
@@ -85,10 +86,10 @@ if __name__ == "__main__":
     #       Init_Epoch = 0，UnFreeze_Epoch = 100，Freeze_Train = False（不冻结训练）
     #       其中：UnFreeze_Epoch可以在100-300之间调整。optimizer_type = 'sgd'，Init_lr = 1e-2。
     #   （二）从主干网络的预训练权重开始训练：
-    #       Init_Epoch = 0，Freeze_Epoch = 50，UnFreeze_Epoch = 300，Freeze_Train = True（冻结训练）
-    #       Init_Epoch = 0，UnFreeze_Epoch = 300，Freeze_Train = False（不冻结训练）
-    #       其中：由于从主干网络的预训练权重开始训练，主干的权值不一定适合目标检测，需要更多的训练跳出局部最优解。
-    #             UnFreeze_Epoch可以在200-300之间调整，YOLOV5和YOLOX均推荐使用300。optimizer_type = 'sgd'，Init_lr = 1e-2。
+    #       Init_Epoch = 0，Freeze_Epoch = 50，UnFreeze_Epoch = 120，Freeze_Train = True（冻结训练）
+    #       Init_Epoch = 0，UnFreeze_Epoch = 120，Freeze_Train = False（不冻结训练）
+    #       其中：由于从主干网络的预训练权重开始训练，主干的权值不一定适合语义分割，需要更多的训练跳出局部最优解。
+    #             UnFreeze_Epoch可以在120-300之间调整。optimizer_type = 'sgd'，Init_lr = 1e-2。
     #   （三）batch_size的设置：
     #       在显卡能够接受的范围内，以大为好。显存不足与数据集大小无关，提示显存不足（OOM或者CUDA out of memory）请调小batch_size。
     #       受到BatchNorm层影响，batch_size最小为2，不能为1。
@@ -143,6 +144,7 @@ if __name__ == "__main__":
     #                   当使用SGD优化器时建议设置   Init_lr=1e-2
     #   momentum        优化器内部使用到的momentum参数
     #   weight_decay    权值衰减，可防止过拟合
+    #                   adam会导致weight_decay错误，使用adam时建议设置为0。
     #------------------------------------------------------------------#
     optimizer_type      = "sgd"
     momentum            = 0.937
@@ -155,10 +157,14 @@ if __name__ == "__main__":
     #   save_period     多少个epoch保存一次权值，默认每个世代都保存
     #------------------------------------------------------------------#
     save_period         = 1
+    #------------------------------------------------------------------#
+    #   save_dir        权值与日志文件保存的文件夹
+    #------------------------------------------------------------------#
+    save_dir            = 'logs'
     
-    #-------------------------------#
-    #   数据集路径
-    #-------------------------------#
+    #------------------------------------------------------------------#
+    #   VOCdevkit_path  数据集路径
+    #------------------------------------------------------------------#
     VOCdevkit_path  = 'VOCdevkit'
     #------------------------------------------------------------------#
     #   建议选项：
@@ -289,10 +295,10 @@ if __name__ == "__main__":
         #   early_stopping  用于设定早停，val_loss多次不下降自动结束训练，表示模型基本收敛
         #-------------------------------------------------------------------------------#
         time_str        = datetime.datetime.strftime(datetime.datetime.now(),'%Y_%m_%d_%H_%M_%S')
-        log_dir         = os.path.join('logs', "loss_" + str(time_str))
+        log_dir         = os.path.join(save_dir, "loss_" + str(time_str))
         logging         = TensorBoard(log_dir)
         loss_history    = LossHistory(log_dir)
-        checkpoint      = ModelCheckpoint('logs/ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
+        checkpoint      = ModelCheckpoint(os.path.join(save_dir, "ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5"), 
                                 monitor = 'val_loss', save_weights_only = True, save_best_only = False, period = save_period)
         early_stopping  = EarlyStopping(monitor='val_loss', min_delta = 0, patience = 10, verbose = 1)
         lr_scheduler    = LearningRateScheduler(lr_scheduler_func, verbose = 1)
