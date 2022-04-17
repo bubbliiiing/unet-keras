@@ -8,11 +8,14 @@ from keras.callbacks import (EarlyStopping, LearningRateScheduler,
 from keras.layers import Conv2D, Dense, DepthwiseConv2D
 from keras.optimizers import SGD, Adam
 from keras.regularizers import l2
+from keras.utils.multi_gpu_utils import multi_gpu_model
 
 from nets.unet import Unet
 from nets.unet_training import (CE, Focal_Loss, dice_loss_with_CE,
                                 dice_loss_with_Focal_Loss, get_lr_scheduler)
-from utils.callbacks import ExponentDecayScheduler, LossHistory
+from utils.callbacks import (ExponentDecayScheduler, LossHistory,
+                             ParallelModelCheckpoint,
+                             WarmUpCosineDecayScheduler)
 from utils.dataloader import UnetDataset
 from utils.utils_metrics import Iou_score, f_score
 
@@ -41,10 +44,16 @@ from utils.utils_metrics import Iou_score, f_score
    这些都是经验上，只能靠各位同学多查询资料和自己试试了。
 '''
 if __name__ == "__main__":    
-    #-----------------------------------------------------#
+    #---------------------------------------------------------------------#
+    #   train_gpu   训练用到的GPU
+    #               默认为第一张卡、双卡为[0, 1]、三卡为[0, 1, 2]
+    #               在使用多GPU时，每个卡上的batch为总batch除以卡的数量。
+    #---------------------------------------------------------------------#
+    train_gpu   = [0,]
+    #---------------------------------------------------------------------#
     #   num_classes     训练自己的数据集必须要修改的
     #                   自己需要的分类个数+1，如2+1
-    #-----------------------------------------------------#
+    #---------------------------------------------------------------------#
     num_classes     = 21
     #-------------------------------#
     #   主干网络选择
@@ -200,16 +209,28 @@ if __name__ == "__main__":
     #   在IO为瓶颈的时候再开启多线程，即GPU运算速度远大于读取图片的速度。
     #-------------------------------------------------------------------#
     num_workers     = 1
+
+    #------------------------------------------------------#
+    #   设置用到的显卡
+    #------------------------------------------------------#
+    os.environ["CUDA_VISIBLE_DEVICES"]  = ','.join(str(x) for x in train_gpu)
+    ngpus_per_node                      = len(train_gpu)
+    print('Number of devices: {}'.format(ngpus_per_node))
     
     #------------------------------------------------------#
     #   获取model
     #------------------------------------------------------#
-    model = Unet([input_shape[0], input_shape[1], 3], num_classes, backbone)
+    model_body = Unet([input_shape[0], input_shape[1], 3], num_classes, backbone)
     if model_path != '':
         #------------------------------------------------------#
         #   载入预训练权重
         #------------------------------------------------------#
-        model.load_weights(model_path, by_name=True, skip_mismatch=True)
+        model_body.load_weights(model_path, by_name=True, skip_mismatch=True)
+
+    if ngpus_per_node > 1:
+        model = multi_gpu_model(model_body, gpus=ngpus_per_node)
+    else:
+        model = model_body
 
     if focal_loss:
         if dice_loss:
@@ -257,8 +278,8 @@ if __name__ == "__main__":
                 freeze_layers = 172
             else:
                 raise ValueError('Unsupported backbone - `{}`, Use vgg, resnet50.'.format(backbone))
-            for i in range(freeze_layers): model.layers[i].trainable = False
-            print('Freeze the first {} layers of total {} layers.'.format(freeze_layers, len(model.layers)))
+            for i in range(freeze_layers): model_body.layers[i].trainable = False
+            print('Freeze the first {} layers of total {} layers.'.format(freeze_layers, len(model_body.layers)))
 
         #-------------------------------------------------------------------#
         #   如果不冻结训练的话，直接设置batch_size为Unfreeze_batch_size
@@ -309,8 +330,12 @@ if __name__ == "__main__":
         log_dir         = os.path.join(save_dir, "loss_" + str(time_str))
         logging         = TensorBoard(log_dir)
         loss_history    = LossHistory(log_dir)
-        checkpoint      = ModelCheckpoint(os.path.join(save_dir, "ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5"), 
-                                monitor = 'val_loss', save_weights_only = True, save_best_only = False, period = save_period)
+        if ngpus_per_node > 1:
+            checkpoint      = ParallelModelCheckpoint(model_body, os.path.join(save_dir, "ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5"), 
+                                    monitor = 'val_loss', save_weights_only = True, save_best_only = False, period = save_period)
+        else:
+            checkpoint      = ModelCheckpoint(os.path.join(save_dir, "ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5"), 
+                                    monitor = 'val_loss', save_weights_only = True, save_best_only = False, period = save_period)
         early_stopping  = EarlyStopping(monitor='val_loss', min_delta = 0, patience = 10, verbose = 1)
         lr_scheduler    = LearningRateScheduler(lr_scheduler_func, verbose = 1)
         callbacks       = [logging, loss_history, checkpoint, lr_scheduler]
@@ -352,8 +377,8 @@ if __name__ == "__main__":
             lr_scheduler    = LearningRateScheduler(lr_scheduler_func, verbose = 1)
             callbacks       = [logging, loss_history, checkpoint, lr_scheduler]
             
-            for i in range(len(model.layers)): 
-                model.layers[i].trainable = True
+            for i in range(len(model_body.layers)): 
+                model_body.layers[i].trainable = True
             model.compile(loss = loss,
                     optimizer = optimizer,
                     metrics = [f_score()])
