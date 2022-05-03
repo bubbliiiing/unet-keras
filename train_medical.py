@@ -1,8 +1,8 @@
 import datetime
 import os
 
-import keras.backend as K
 import numpy as np
+import tensorflow as tf
 from keras.callbacks import (EarlyStopping, LearningRateScheduler,
                              ModelCheckpoint, TensorBoard)
 from keras.layers import Conv2D, Dense, DepthwiseConv2D
@@ -13,11 +13,12 @@ from keras.utils.multi_gpu_utils import multi_gpu_model
 from nets.unet import Unet
 from nets.unet_training import (CE, Focal_Loss, dice_loss_with_CE,
                                 dice_loss_with_Focal_Loss, get_lr_scheduler)
-from utils.callbacks import (ExponentDecayScheduler, LossHistory,
-                             ParallelModelCheckpoint,
-                             WarmUpCosineDecayScheduler)
+from utils.callbacks import LossHistory, ParallelModelCheckpoint
 from utils.dataloader_medical import UnetDataset
+from utils.utils import show_config
 from utils.utils_metrics import Iou_score, f_score
+
+tf.logging.set_verbosity(tf.logging.ERROR)
 
 '''
 训练自己的语义分割模型一定需要注意以下几点：
@@ -34,17 +35,12 @@ from utils.utils_metrics import Iou_score, f_score
       将文件的标签格式进行转换，标签的每个像素点的值就是这个像素点所属的种类。
       因此数据集的标签需要改成，背景的像素点值为0，目标的像素点值为1。
 
-2、训练好的权值文件保存在logs文件夹中，每个epoch都会保存一次，如果只是训练了几个step是不会保存的，epoch和step的概念要捋清楚一下。
-   在训练过程中，该代码并没有设定只保存最低损失的，因此按默认参数训练完会有100个权值，如果空间不够可以自行删除。
-   这个并不是保存越少越好也不是保存越多越好，有人想要都保存、有人想只保存一点，为了满足大多数的需求，还是都保存可选择性高。
-
-3、损失值的大小用于判断是否收敛，比较重要的是有收敛的趋势，即验证集损失不断下降，如果验证集损失基本上不改变的话，模型基本上就收敛了。
+2、损失值的大小用于判断是否收敛，比较重要的是有收敛的趋势，即验证集损失不断下降，如果验证集损失基本上不改变的话，模型基本上就收敛了。
    损失值的具体大小并没有什么意义，大和小只在于损失的计算方式，并不是接近于0才好。如果想要让损失好看点，可以直接到对应的损失函数里面除上10000。
    训练过程中的损失值会保存在logs文件夹下的loss_%Y_%m_%d_%H_%M_%S文件夹中
-
-4、调参是一门蛮重要的学问，没有什么参数是一定好的，现有的参数是我测试过可以正常训练的参数，因此我会建议用现有的参数。
-   但是参数本身并不是绝对的，比如随着batch的增大学习率也可以增大，效果也会好一些；过深的网络不要用太大的学习率等等。
-   这些都是经验上，只能靠各位同学多查询资料和自己试试了。
+   
+3、训练好的权值文件保存在logs文件夹中，每个训练世代（Epoch）包含若干训练步长（Step），每个训练步长（Step）进行一次梯度下降。
+   如果只是训练了几个Step是不会保存的，Epoch和Step的概念要捋清楚一下。
 '''
 if __name__ == "__main__":    
     #---------------------------------------------------------------------#
@@ -174,9 +170,9 @@ if __name__ == "__main__":
     #------------------------------------------------------------------#
     lr_decay_type       = 'cos'
     #------------------------------------------------------------------#
-    #   save_period     多少个epoch保存一次权值，默认每个世代都保存
+    #   save_period     多少个epoch保存一次权值
     #------------------------------------------------------------------#
-    save_period         = 1
+    save_period         = 5
     #------------------------------------------------------------------#
     #   save_dir        权值与日志文件保存的文件夹
     #------------------------------------------------------------------#
@@ -234,6 +230,9 @@ if __name__ == "__main__":
     else:
         model = model_body
 
+    #--------------------------#
+    #   使用到的损失函数
+    #--------------------------#
     if focal_loss:
         if dice_loss:
             loss = dice_loss_with_Focal_Loss(cls_weights)
@@ -251,7 +250,14 @@ if __name__ == "__main__":
     with open(os.path.join(VOCdevkit_path, "ImageSets/Segmentation/train.txt"),"r") as f:
         train_lines = f.readlines()
     num_train   = len(train_lines)
-        
+    
+    show_config(
+        num_classes = num_classes, backbone = backbone, model_path = model_path, input_shape = input_shape, \
+        Init_Epoch = Init_Epoch, Freeze_Epoch = Freeze_Epoch, UnFreeze_Epoch = UnFreeze_Epoch, Freeze_batch_size = Freeze_batch_size, Unfreeze_batch_size = Unfreeze_batch_size, Freeze_Train = Freeze_Train, \
+        Init_lr = Init_lr, Min_lr = Min_lr, optimizer_type = optimizer_type, momentum = momentum, lr_decay_type = lr_decay_type, \
+        save_period = save_period, save_dir = save_dir, num_workers = num_workers, num_train = num_train
+    )
+    
     for layer in model.layers:
         if isinstance(layer, DepthwiseConv2D):
                 layer.add_loss(l2(weight_decay)(layer.depthwise_kernel))
@@ -330,12 +336,20 @@ if __name__ == "__main__":
         if ngpus_per_node > 1:
             checkpoint      = ParallelModelCheckpoint(model_body, os.path.join(save_dir, "ep{epoch:03d}-loss{loss:.3f}.h5"), 
                                     monitor = 'loss', save_weights_only = True, save_best_only = False, period = save_period)
+            checkpoint_last = ParallelModelCheckpoint(model_body, os.path.join(save_dir, "last_epoch_weights.h5"), 
+                                    monitor = 'loss', save_weights_only = True, save_best_only = False, period = 1)
+            checkpoint_best = ParallelModelCheckpoint(model_body, os.path.join(save_dir, "best_epoch_weights.h5"), 
+                                    monitor = 'loss', save_weights_only = True, save_best_only = True, period = 1)
         else:
             checkpoint      = ModelCheckpoint(os.path.join(save_dir, "ep{epoch:03d}-loss{loss:.3f}.h5"), 
                                     monitor = 'loss', save_weights_only = True, save_best_only = False, period = save_period)
+            checkpoint_last = ModelCheckpoint(os.path.join(save_dir, "last_epoch_weights.h5"), 
+                                    monitor = 'loss', save_weights_only = True, save_best_only = False, period = 1)
+            checkpoint_best = ModelCheckpoint(os.path.join(save_dir, "best_epoch_weights.h5"), 
+                                    monitor = 'loss', save_weights_only = True, save_best_only = True, period = 1)
         early_stopping  = EarlyStopping(monitor='loss', min_delta = 0, patience = 10, verbose = 1)
         lr_scheduler    = LearningRateScheduler(lr_scheduler_func, verbose = 1)
-        callbacks       = [logging, loss_history, checkpoint, lr_scheduler]
+        callbacks       = [logging, loss_history, checkpoint, checkpoint_last, checkpoint_best, lr_scheduler]
 
         if start_epoch < end_epoch:
             model.fit_generator(
@@ -369,7 +383,7 @@ if __name__ == "__main__":
             #---------------------------------------#
             lr_scheduler_func = get_lr_scheduler(lr_decay_type, Init_lr_fit, Min_lr_fit, UnFreeze_Epoch)
             lr_scheduler    = LearningRateScheduler(lr_scheduler_func, verbose = 1)
-            callbacks       = [logging, loss_history, checkpoint, lr_scheduler]
+            callbacks       = [logging, loss_history, checkpoint, checkpoint_last, checkpoint_best, lr_scheduler]
             
             for i in range(len(model_body.layers)): 
                 model_body.layers[i].trainable = True
